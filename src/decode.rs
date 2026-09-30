@@ -159,9 +159,13 @@ pub fn decode_archives(
                         text_path, e
                     )
                 })?;
-                let archive_file = std::fs::File::open(archive_path).map_err(|e| {
-                    format!("Failed to open archive file {:?}: {}", archive_path, e)
-                })?;
+                // Windows refuses to set times through a read-only handle.
+                let archive_file = std::fs::OpenOptions::new()
+                    .write(true)
+                    .open(archive_path)
+                    .map_err(|e| {
+                        format!("Failed to open archive file {:?}: {}", archive_path, e)
+                    })?;
                 archive_file.set_modified(modified_time).map_err(|e| {
                     format!(
                         "Failed to update modified time for archive file {:?}: {}",
