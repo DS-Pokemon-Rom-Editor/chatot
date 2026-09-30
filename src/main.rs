@@ -89,7 +89,15 @@ pub struct Settings {
     pub msgenc_format: bool,
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
+    // Returning the error from main would print it Debug-escaped, doubling every backslash in a path.
+    if let Err(error) = run() {
+        eprintln!("Error: {error}");
+        std::process::exit(1);
+    }
+}
+
+fn run() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
 
     match &cli.commands {

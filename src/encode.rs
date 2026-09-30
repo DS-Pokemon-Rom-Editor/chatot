@@ -137,33 +137,38 @@ pub fn encode_texts(
                 if text_path.exists() && archive_path.exists() {
                     let archive_metadata = std::fs::metadata(archive_path).map_err(|e| {
                         format!(
-                            "Failed to get metadata for archive {:?}: {}",
-                            archive_path, e
+                            "Failed to get metadata for archive '{}': {}",
+                            archive_path.display(),
+                            e
                         )
                     })?;
                     let text_metadata = std::fs::metadata(text_path).map_err(|e| {
                         format!(
-                            "Failed to get metadata for text file {:?}: {}",
-                            text_path, e
+                            "Failed to get metadata for text file '{}': {}",
+                            text_path.display(),
+                            e
                         )
                     })?;
                     let archive_modified = archive_metadata.modified().map_err(|e| {
                         format!(
-                            "Failed to get modified time for archive {:?}: {}",
-                            archive_path, e
+                            "Failed to get modified time for archive '{}': {}",
+                            archive_path.display(),
+                            e
                         )
                     })?;
                     let text_modified = text_metadata.modified().map_err(|e| {
                         format!(
-                            "Failed to get modified time for text file {:?}: {}",
-                            text_path, e
+                            "Failed to get modified time for text file '{}': {}",
+                            text_path.display(),
+                            e
                         )
                     })?;
                     if archive_modified >= text_modified {
                         #[cfg(debug_assertions)]
                         println!(
-                            "Skipping decoding of {:?} as destination {:?} is newer",
-                            archive_path, text_path
+                            "Skipping decoding of '{}' as destination '{}' is newer",
+                            archive_path.display(),
+                            text_path.display()
                         );
                         return Ok(());
                     }
@@ -171,13 +176,18 @@ pub fn encode_texts(
             }
 
             #[cfg(debug_assertions)]
-            println!("Encoding text: {:?} -> {:?}", text_path, archive_path);
+            println!(
+                "Encoding text: '{}' -> '{}'",
+                text_path.display(),
+                archive_path.display()
+            );
 
             let text_content = std::fs::read_to_string(text_path)
-                .map_err(|e| format!("Failed to read text {:?}: {}", text_path, e))?;
+                .map_err(|e| format!("Failed to read text '{}': {}", text_path.display(), e))?;
             let encoded_data = if settings.json {
-                encode_json(&charmap, &text_content, &settings.lang, Some(&text_path))
-                    .map_err(|e| format!("Failed to encode JSON {:?}: {}", text_path, e))?
+                encode_json(&charmap, &text_content, &settings.lang, Some(&text_path)).map_err(
+                    |e| format!("Failed to encode JSON '{}': {}", text_path.display(), e),
+                )?
             } else {
                 encode_text(
                     &charmap,
@@ -185,34 +195,44 @@ pub fn encode_texts(
                     settings.msgenc_format,
                     Some(&text_path),
                 )
-                .map_err(|e| format!("Failed to encode text {:?}: {}", text_path, e))?
+                .map_err(|e| format!("Failed to encode text '{}': {}", text_path.display(), e))?
             };
-            std::fs::write(archive_path, encoded_data)
-                .map_err(|e| format!("Failed to write archive {:?}: {}", archive_path, e))?;
+            std::fs::write(archive_path, encoded_data).map_err(|e| {
+                format!(
+                    "Failed to write archive '{}': {}",
+                    archive_path.display(),
+                    e
+                )
+            })?;
 
             if settings.newer_only {
                 // Update timestamp on source text file to match destination archive
                 let archive_metadata = std::fs::metadata(archive_path).map_err(|e| {
                     format!(
-                        "Failed to get metadata for archive {:?}: {}",
-                        archive_path, e
+                        "Failed to get metadata for archive '{}': {}",
+                        archive_path.display(),
+                        e
                     )
                 })?;
                 let modified_time = archive_metadata.modified().map_err(|e| {
                     format!(
-                        "Failed to get modified time for archive {:?}: {}",
-                        archive_path, e
+                        "Failed to get modified time for archive '{}': {}",
+                        archive_path.display(),
+                        e
                     )
                 })?;
                 // Windows refuses to set times through a read-only handle.
                 let text_file = std::fs::OpenOptions::new()
                     .write(true)
                     .open(text_path)
-                    .map_err(|e| format!("Failed to open text file {:?}: {}", text_path, e))?;
+                    .map_err(|e| {
+                        format!("Failed to open text file '{}': {}", text_path.display(), e)
+                    })?;
                 text_file.set_modified(modified_time).map_err(|e| {
                     format!(
-                        "Failed to update modified time for text file {:?}: {}",
-                        text_path, e
+                        "Failed to update modified time for text file '{}': {}",
+                        text_path.display(),
+                        e
                     )
                 })?;
             }
