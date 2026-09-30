@@ -204,7 +204,10 @@ pub fn encode_texts(
                         archive_path, e
                     )
                 })?;
-                let text_file = std::fs::File::open(text_path)
+                // Windows refuses to set times through a read-only handle.
+                let text_file = std::fs::OpenOptions::new()
+                    .write(true)
+                    .open(text_path)
                     .map_err(|e| format!("Failed to open text file {:?}: {}", text_path, e))?;
                 text_file.set_modified(modified_time).map_err(|e| {
                     format!(
