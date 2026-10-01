@@ -93,33 +93,38 @@ pub fn decode_archives(
                 if text_path.exists() && archive_path.exists() {
                     let archive_metadata = std::fs::metadata(archive_path).map_err(|e| {
                         format!(
-                            "Failed to get metadata for archive {:?}: {}",
-                            archive_path, e
+                            "Failed to get metadata for archive '{}': {}",
+                            archive_path.display(),
+                            e
                         )
                     })?;
                     let text_metadata = std::fs::metadata(text_path).map_err(|e| {
                         format!(
-                            "Failed to get metadata for text file {:?}: {}",
-                            text_path, e
+                            "Failed to get metadata for text file '{}': {}",
+                            text_path.display(),
+                            e
                         )
                     })?;
                     let archive_modified = archive_metadata.modified().map_err(|e| {
                         format!(
-                            "Failed to get modified time for archive {:?}: {}",
-                            archive_path, e
+                            "Failed to get modified time for archive '{}': {}",
+                            archive_path.display(),
+                            e
                         )
                     })?;
                     let text_modified = text_metadata.modified().map_err(|e| {
                         format!(
-                            "Failed to get modified time for text file {:?}: {}",
-                            text_path, e
+                            "Failed to get modified time for text file '{}': {}",
+                            text_path.display(),
+                            e
                         )
                     })?;
                     if archive_modified <= text_modified {
                         #[cfg(debug_assertions)]
                         println!(
-                            "Skipping decoding of {:?} as destination {:?} is newer",
-                            archive_path, text_path
+                            "Skipping decoding of '{}' as destination '{}' is newer",
+                            archive_path.display(),
+                            text_path.display()
                         );
                         return Ok(());
                     }
@@ -127,21 +132,40 @@ pub fn decode_archives(
             }
 
             #[cfg(debug_assertions)]
-            println!("Decoding archive: {:?} -> {:?}", archive_path, text_path);
+            println!(
+                "Decoding archive: '{}' -> '{}'",
+                archive_path.display(),
+                text_path.display()
+            );
 
-            let archive_file = std::fs::read(archive_path)
-                .map_err(|e| format!("Failed to read archive {:?}: {}", archive_path, e))?;
+            let archive_file = std::fs::read(archive_path).map_err(|e| {
+                format!("Failed to read archive '{}': {}", archive_path.display(), e)
+            })?;
             let mut cursor = Cursor::new(&archive_file);
-            let archive = decode_archive(&charmap, &mut cursor, settings.msgenc_format)
-                .map_err(|e| format!("Failed to decode archive {:?}: {}", archive_path, e))?;
+            let archive =
+                decode_archive(&charmap, &mut cursor, settings.msgenc_format).map_err(|e| {
+                    format!(
+                        "Failed to decode archive '{}': {}",
+                        archive_path.display(),
+                        e
+                    )
+                })?;
 
             if settings.json {
                 write_decoded_json(&archive, text_path, settings.lang.clone()).map_err(|e| {
-                    format!("Failed to write decoded JSON to {:?}: {}", text_path, e)
+                    format!(
+                        "Failed to write decoded JSON to '{}': {}",
+                        text_path.display(),
+                        e
+                    )
                 })?;
             } else {
                 write_decoded_text(&archive, text_path, settings.msgenc_format).map_err(|e| {
-                    format!("Failed to write decoded text to {:?}: {}", text_path, e)
+                    format!(
+                        "Failed to write decoded text to '{}': {}",
+                        text_path.display(),
+                        e
+                    )
                 })?;
             }
 
@@ -149,23 +173,34 @@ pub fn decode_archives(
                 // Update source archive file timestamp to match destination text file
                 let text_metadata = std::fs::metadata(text_path).map_err(|e| {
                     format!(
-                        "Failed to get metadata for text file {:?}: {}",
-                        text_path, e
+                        "Failed to get metadata for text file '{}': {}",
+                        text_path.display(),
+                        e
                     )
                 })?;
                 let modified_time = text_metadata.modified().map_err(|e| {
                     format!(
-                        "Failed to get modified time for text file {:?}: {}",
-                        text_path, e
+                        "Failed to get modified time for text file '{}': {}",
+                        text_path.display(),
+                        e
                     )
                 })?;
-                let archive_file = std::fs::File::open(archive_path).map_err(|e| {
-                    format!("Failed to open archive file {:?}: {}", archive_path, e)
-                })?;
+                // Windows refuses to set times through a read-only handle.
+                let archive_file = std::fs::OpenOptions::new()
+                    .write(true)
+                    .open(archive_path)
+                    .map_err(|e| {
+                        format!(
+                            "Failed to open archive file '{}': {}",
+                            archive_path.display(),
+                            e
+                        )
+                    })?;
                 archive_file.set_modified(modified_time).map_err(|e| {
                     format!(
-                        "Failed to update modified time for archive file {:?}: {}",
-                        archive_path, e
+                        "Failed to update modified time for archive file '{}': {}",
+                        archive_path.display(),
+                        e
                     )
                 })?;
             }
